@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Green Lagoon - Nurturing a Healthier India</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony (Greens, Beiges, Warm Grays) -->
+    <!-- Application Structure Plan: A single-page, scrollable dashboard with a sticky navigation header. The structure is thematic: Hero, The Problem, Our Solution (interactive tabs), Our Impact (interactive chart), a new Shop section, The Future, and Footer. This non-linear, thematic structure allows users to explore content based on interest. The new Shop section adds a commercial dimension, showcasing products in a clean grid. -->
+    <!-- Visualization & Content Choices: 
+        - New Feature: Shop Section -> Goal: Showcase/Sell -> Viz: Grid of product cards -> Interaction: Hover effects on cards, clickable "Buy Now" buttons (demo). -> Justification: Provides a clear, organized way to display products for sale, a common feature for healthcare platforms.
+        - Report Info: Healthcare Challenges (Slide 3) -> Goal: Inform -> Viz: Icon-based stat cards + A Gemini-powered local report generator. -> Interaction: Hover effects, text input, button click to generate text in a modal. -> Justification: Makes the problem more personal and tangible.
+        - Report Info: Solutions & Initiatives (Slides 4-6) -> Goal: Organize/Detail -> Viz: Tabbed interface with clickable cards. One card includes a Gemini-powered campaign drafter. -> Interaction: Click to switch tabs/reveal details/generate campaign plan in a modal. -> Justification: Manages information density and shows practical AI use cases.
+        - Report Info: AI Symptom Checker (Slide 6) -> Goal: Demonstrate -> Viz: A Gemini-powered AI Health Assistant chat interface. -> Interaction: User text input to chat with an LLM. -> Justification: Provides a direct, interactive demo of the mentioned technology.
+        - Report Info: Projected Impact (Slide 7) -> Goal: Compare/Show Growth -> Viz: Chart.js Bar Chart -> Interaction: Hover tooltips, load animation -> Justification: Visually represents growth targets more effectively than static numbers. Library: Chart.js.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-image: url('https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #1E293B; /* Darker slate for better contrast */
+        }
+        main > section {
+             background-color: rgba(248, 250, 252, 0.92); /* Lighter, cleaner overlay, slightly more opaque */
+             backdrop-filter: blur(4px);
+        }
+        .section-bg-alt {
+             background-color: rgba(241, 245, 249, 0.92); /* Slightly darker overlay */
+        }
+        .nav-link {
+            position: relative;
+            transition: color 0.3s;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #059669; /* A more vibrant green */
+            transition: width 0.3s;
+        }
+        .nav-link.active, .nav-link:hover {
+            color: #059669;
+        }
+        .nav-link.active::after, .nav-link:hover::after {
+            width: 100%;
+        }
+        .tab-btn {
+            transition: all 0.3s;
+        }
+        .tab-btn.active {
+            background-color: #059669;
+            color: #FFFFFF;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .stat-card, .product-card {
+            background-color: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .stat-card:hover, .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px;
+            max-height: 50vh;
+        }
+        .modal {
+            transition: opacity 0.3s ease;
+        }
+        .spinner {
+            border-top-color: #059669;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .chat-bubble {
+            max-width: 75%;
+            padding: 10px 15px;
+            border-radius: 15px;
+        }
+        .chat-bubble.user {
+            background-color: #059669;
+            color: white;
+            align-self: flex-end;
+        }
+        .chat-bubble.assistant {
+            background-color: #E2E8F0;
+            color: #1E293B;
+            align-self: flex-start;
+        }
+        @keyframes heartbeat {
+            0% { transform: scale(1); }
+            10% { transform: scale(1.05); }
+            20% { transform: scale(1); }
+            30% { transform: scale(1.05); }
+            40% { transform: scale(1); }
+            100% { transform: scale(1); }
+        }
+        .logo-animate {
+            animation: heartbeat 3s ease-in-out infinite;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header id="header" class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="#" class="text-2xl font-bold text-[#065F46] logo-animate">
+                Green Lagoon
+            </a>
+            <div class="hidden md:flex items-center space-x-8 text-slate-700">
+                <a href="#problem" class="nav-link">The Problem</a>
+                <a href="#solution" class="nav-link">Our Solution</a>
+                <a href="#impact" class="nav-link">Our Impact</a>
+                <a href="#shop" class="nav-link">Shop</a>
+                <a href="#future" class="nav-link">The Future</a>
+            </div>
+            <button id="mobile-menu-button" class="md:hidden text-2xl">☰</button>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden bg-white py-4">
+            <a href="#problem" class="block text-center py-2 nav-link">The Problem</a>
+            <a href="#solution" class="block text-center py-2 nav-link">Our Solution</a>
+            <a href="#impact" class="block text-center py-2 nav-link">Our Impact</a>
+            <a href="#shop" class="block text-center py-2 nav-link">Shop</a>
+            <a href="#future" class="block text-center py-2 nav-link">The Future</a>
+        </div>
+    </header>
+
+    <main>
+        <section id="hero" class="py-20 md:py-32">
+            <div class="container mx-auto px-6 text-center">
+                <h1 class="text-4xl md:text-6xl font-bold text-[#064E3B] leading-tight">Nurturing a Healthier India</h1>
+                <p class="mt-6 text-lg md:text-xl max-w-3xl mx-auto text-slate-600">
+                    We bridge the gaps in Indian healthcare by delivering accessible, affordable, and high-quality health services to every corner of the nation.
+                </p>
+            </div>
+        </section>
+
+        <section id="problem" class="py-16 md:py-24">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-[#064E3B]">The Indian Healthcare Landscape</h2>
+                    <p class="mt-4 text-lg max-w-2xl mx-auto text-slate-600">The challenge is the opportunity. India faces significant healthcare hurdles that we are dedicated to overcoming.</p>
+                </div>
+                <div class="grid md:grid-cols-2 lg:grid-cols-5 gap-8">
+                    <div class="stat-card">
+                        <div class="text-5xl mb-4">🏠</div>
+                        <h3 class="text-xl font-semibold mb-2 text-[#059669]">Access & Equity</h3>
+                        <p class="text-slate-600">Over 70% of the rural population has limited access to quality medical facilities and personnel.</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="text-5xl mb-4">🏥</div>
+                        <h3 class="text-xl font-semibold mb-2 text-[#059669]">Infrastructure Gap</h3>
+                        <p class="text-slate-600">A significant shortage of primary health centers, hospital beds, and trained doctors.</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="text-5xl mb-4">💰</div>
+                        <h3 class="text-xl font-semibold mb-2 text-[#059669]">High Costs</h3>
+                        <p class="text-slate-600">A majority of healthcare spending is out-of-pocket, pushing millions into poverty.</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="text-5xl mb-4">❤️</div>
+                        <h3 class="text-xl font-semibold mb-2 text-[#059669]">Reactive Focus</h3>
+                        <p class="text-slate-600">The system is largely focused on cure, not prevention and proactive health management.</p>
+                    </div>
+                    <div class="stat-card bg-emerald-50">
+                        <div class="text-5xl mb-4">🌍</div>
+                        <h3 class="text-xl font-semibold mb-2 text-[#064E3B]">Get a Local Perspective</h3>
+                        <p class="text-slate-700 mb-4">Enter a state or district to see a summary of its specific challenges.</p>
+                        <div class="mt-auto">
+                            <input id="location-input" type="text" placeholder="e.g., Rural Bihar" class="w-full p-2 rounded border border-gray-300 mb-2">
+                            <button id="generate-report-btn" class="w-full bg-[#059669] text-white py-2 px-4 rounded hover:bg-[#065F46] transition-colors">✨ Generate Report</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="solution" class="py-16 md:py-24 section-bg-alt">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-[#064E3B]">Our Integrated Solution</h2>
+                    <p class="mt-4 text-lg max-w-2xl mx-auto text-slate-600">We've built a multi-faceted approach to tackle healthcare challenges head-on, focusing on what matters most.</p>
+                </div>
+
+                <div class="flex justify-center mb-8">
+                    <div class="flex space-x-2 md:space-x-4 bg-white/50 p-2 rounded-full shadow-inner">
+                        <button class="tab-btn active px-4 py-2 md:px-6 md:py-3 rounded-full font-semibold" data-tab="initiatives">Our Initiatives</button>
+                        <button class="tab-btn px-4 py-2 md:px-6 md:py-3 rounded-full font-semibold" data-tab="tech">Our Technology</button>
+                    </div>
+                </div>
+
+                <div id="initiatives" class="tab-content">
+                    <p class="text-center text-slate-700 mb-10 max-w-3xl mx-auto">Our initiatives are designed to deliver care effectively, from rural clinics to community-wide programs, all powered by a robust digital backbone.</p>
+                    <div class="grid md:grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="bg-white p-8 rounded-lg shadow-md hover:shadow-xl transition-shadow flex flex-col">
+                            <h3 class="text-2xl font-bold text-[#059669] mb-3">"Aarogya Mitra" Clinics</h3>
+                            <p class="text-slate-600">A chain of smart, tech-enabled primary healthcare clinics in rural and semi-urban areas, staffed by trained nurses and community health workers, and connected to city-based doctors via our digital platform.</p>
+                        </div>
+                        <div class="bg-white p-8 rounded-lg shadow-md hover:shadow-xl transition-shadow flex flex-col">
+                            <h3 class="text-2xl font-bold text-[#059669] mb-3">"Swasth Parivar" Program</h3>
+                            <p class="text-slate-600 mb-4">Community-level health screening camps and awareness workshops.</p>
+                            <button id="generate-campaign-btn" class="mt-auto w-full bg-[#059669] text-white py-2 px-4 rounded hover:bg-[#065F46] transition-colors">✨ Draft an Awareness Campaign</button>
+                        </div>
+                        <div class="bg-white p-8 rounded-lg shadow-md hover:shadow-xl transition-shadow flex flex-col">
+                            <h3 class="text-2xl font-bold text-[#059669] mb-3">Strategic Pillars</h3>
+                            <p class="text-slate-600">Our work is guided by three core principles: reaching **Rural & Remote Healthcare**, innovating with **Technology-Driven Solutions**, and promoting **Preventive & Community Health**.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tech" class="tab-content hidden">
+                    <div class="text-center">
+                        <h3 class="text-2xl font-bold text-[#059669] mb-3">The "Sehat Connect" Platform</h3>
+                        <p class="text-slate-700 mb-10 max-w-3xl mx-auto">Our comprehensive mobile app is integrated with the Ayushman Bharat Digital Mission (ABDM) for a unified healthcare experience. Explore a demo of our AI assistant below.</p>
+                        <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-4">
+                            <h4 class="font-bold text-lg mb-2 text-left">✨ AI Health Assistant</h4>
+                             <div id="chat-window" class="h-64 overflow-y-auto border rounded-lg p-4 flex flex-col space-y-4 mb-4 bg-gray-50">
+                                <div class="chat-bubble assistant">Hello! How can I help you today? Please note, I am an AI assistant and not a medical professional. For medical advice, please consult a doctor.</div>
+                            </div>
+                            <div class="flex space-x-2">
+                                <input type="text" id="chat-input" placeholder="Ask a general health question..." class="flex-grow p-2 border rounded-lg">
+                                <button id="chat-send-btn" class="bg-[#059669] text-white px-6 py-2 rounded-lg hover:bg-[#065F46]">Send</button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2 text-left">Disclaimer: This is for informational purposes only. Not a substitute for professional medical advice.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="impact" class="py-16 md:py-24">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-[#064E3B]">Our Projected Impact by 2028</h2>
+                    <p class="mt-4 text-lg max-w-2xl mx-auto text-slate-600">We measure our success by the lives we touch and the tangible improvements we bring to the healthcare ecosystem.</p>
+                </div>
+                <div class="bg-white p-6 md:p-8 rounded-lg shadow-lg">
+                    <div class="md:flex items-center">
+                        <div class="md:w-1/3 text-center md:text-left mb-8 md:mb-0 md:pr-8">
+                            <h3 class="text-2xl font-bold text-[#064E3B]">A Tangible Difference</h3>
+                            <p class="text-slate-600 mt-2">Our goals are ambitious because the need is great. The chart shows our key growth targets, aimed at creating a wide-reaching and sustainable health network.</p>
+                            <div class="mt-6 bg-emerald-50 p-6 rounded-lg">
+                                <p class="text-lg font-semibold text-[#064E3B]">Key Financial Goal:</p>
+                                <p class="text-4xl font-bold text-[#059669] mt-2">40% Reduction</p>
+                                <p class="text-slate-700">in out-of-pocket expenditure for our registered members.</p>
+                            </div>
+                        </div>
+                        <div class="md:w-2/3">
+                            <div class="chart-container">
+                                <canvas id="impactChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="shop" class="py-16 md:py-24 section-bg-alt">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-[#064E3B]">Shop Medical Devices</h2>
+                    <p class="mt-4 text-lg max-w-2xl mx-auto text-slate-600">Empower your health journey with reliable, easy-to-use medical devices for home monitoring.</p>
+                </div>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="product-card">
+                        <div>
+                            <div class="text-6xl mb-4">🩺</div>
+                            <h3 class="text-xl font-semibold mb-2 text-[#059669]">Digital BP Monitor</h3>
+                            <p class="text-slate-600 mb-4">Accurate and easy-to-use upper arm blood pressure monitor.</p>
+                        </div>
+                        <div class="mt-auto">
+                            <p class="text-2xl font-bold text-[#064E3B] mb-4">₹2,499</p>
+                            <button class="w-full bg-[#059669] text-white py-2 px-4 rounded hover:bg-[#065F46] transition-colors">Buy Now</button>
+                        </div>
+                    </div>
+                    <div class="product-card">
+                        <div>
+                            <div class="text-6xl mb-4">🩸</div>
+                            <h3 class="text-xl font-semibold mb-2 text-[#059669]">Blood Glucose Monitor</h3>
+                            <p class="text-slate-600 mb-4">Quickly check your blood sugar levels with this compact glucometer kit.</p>
+                        </div>
+                        <div class="mt-auto">
+                            <p class="text-2xl font-bold text-[#064E3B] mb-4">₹1,299</p>
+                            <button class="w-full bg-[#059669] text-white py-2 px-4 rounded hover:bg-[#065F46] transition-colors">Buy Now</button>
+                        </div>
+                    </div>
+                    <div class="product-card">
+                        <div>
+                            <div class="text-6xl mb-4">💨</div>
+                            <h3 class="text-xl font-semibold mb-2 text-[#059669]">Pulse Oximeter</h3>
+                            <p class="text-slate-600 mb-4">Measure your blood oxygen saturation (SpO2) and pulse rate instantly.</p>
+                        </div>
+                        <div class="mt-auto">
+                            <p class="text-2xl font-bold text-[#064E3B] mb-4">₹1,999</p>
+                            <button class="w-full bg-[#059669] text-white py-2 px-4 rounded hover:bg-[#065F46] transition-colors">Buy Now</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="future" class="py-16 md:py-24">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-[#064E3B]">Innovating for a Healthier Tomorrow</h2>
+                    <p class="mt-4 text-lg max-w-2xl mx-auto text-slate-600">Our journey doesn't stop here. We are continuously expanding our services and partnerships to shape the future of health.</p>
+                </div>
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <div class="text-4xl mb-3">🤝</div>
+                        <h3 class="text-xl font-semibold text-[#059669]">Public-Private Partnerships</h3>
+                        <p class="text-slate-600 mt-2">Collaborating with state governments to manage and upgrade Primary Health Centres (PHCs).</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <div class="text-4xl mb-3">🧠</div>
+                        <h3 class="text-xl font-semibold text-[#059669]">Expanding Specializations</h3>
+                        <p class="text-slate-600 mt-2">Introducing mental health, maternal care, and chronic disease management services.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <div class="text-4xl mb-3">🛡️</div>
+                        <h3 class="text-xl font-semibold text-[#059669]">Health Insurance Integration</h3>
+                        <p class="text-slate-600 mt-2">Partnering with insurers to offer affordable, co-branded health plans for all.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <div class="text-4xl mb-3">📊</div>
+                        <h3 class="text-xl font-semibold text-[#059669]">Data-Driven Insights</h3>
+                        <p class="text-slate-600 mt-2">Using anonymized data to identify public health trends and inform policy.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-[#064E3B] text-white">
+        <div class="container mx-auto px-6 py-12 text-center">
+            <h3 class="text-2xl font-bold">Green Lagoon</h3>
+            <p class="mt-2">Join us in nurturing a healthier India.</p>
+            <div class="mt-6 flex justify-center space-x-6">
+                <a href="mailto:contact@greenlagoon.health" class="hover:text-emerald-300 transition-colors">contact@greenlagoon.health</a>
+                <span>|</span>
+                <a href="#" class="hover:text-emerald-300 transition-colors">www.greenlagoon.health</a>
+            </div>
+            <p class="mt-8 text-sm text-gray-400">&copy; 2025 Green Lagoon. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <div id="modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden opacity-0">
+        <div class="bg-white rounded-lg shadow-2xl p-8 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-title" class="text-2xl font-bold text-[#064E3B]">Generated Report</h3>
+                <button id="modal-close-btn" class="text-3xl text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <div id="modal-content">
+                <div class="flex justify-center items-center h-48">
+                    <div class="spinner w-12 h-12 rounded-full border-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    if (!mobileMenu.classList.contains('hidden')) {
+                        mobileMenu.classList.add('hidden');
+                    }
+                });
+            });
+
+            const sections = document.querySelectorAll('main section');
+            const headerHeight = document.getElementById('header').offsetHeight;
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        navLinks.forEach(link => {
+                            link.classList.remove('active');
+                            if (link.getAttribute('href').substring(1) === entry.target.id) {
+                                link.classList.add('active');
+                            }
+                        });
+                    }
+                });
+            }, { rootMargin: `-${headerHeight}px 0px 0px 0px`, threshold: 0.3 });
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+
+                    const tabId = button.dataset.tab;
+                    tabContents.forEach(content => {
+                        if (content.id === tabId) {
+                            content.classList.remove('hidden');
+                        } else {
+                            content.classList.add('hidden');
+                        }
+                    });
+                });
+            });
+            
+            const impactChartCtx = document.getElementById('impactChart').getContext('2d');
+            const impactChart = new Chart(impactChartCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['"Aarogya Mitra" Clinics', 'Lives Touched (in Millions)', 'Individuals Screened (in Millions)'],
+                    datasets: [{
+                        label: 'Projected Impact by 2028',
+                        data: [500, 10, 5],
+                        backgroundColor: [
+                            'rgba(5, 150, 105, 0.7)',
+                            'rgba(6, 95, 70, 0.7)',
+                            'rgba(110, 231, 183, 0.7)'
+                        ],
+                        borderColor: [
+                            '#059669',
+                            '#065F46',
+                            '#6EE7B7'
+                        ],
+                        borderWidth: 2,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            ticks: { color: '#1E293B' }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: {
+                                color: '#1E293B',
+                                callback: function(value, index, values) {
+                                    const label = this.getLabelForValue(value);
+                                    if (label.length > 16) {
+                                        return label.match(/.{1,16}/g);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1E293B',
+                            titleFont: { size: 16 },
+                            bodyFont: { size: 14 },
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) { label += ': '; }
+                                    if (context.parsed.x !== null) {
+                                        let value = context.parsed.x;
+                                        if (context.label.includes('Millions')) {
+                                            label += value + ' Million';
+                                        } else {
+                                            label += new Intl.NumberFormat('en-IN').format(value);
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeInOutQuart'
+                    }
+                }
+            });
+
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalContent = document.getElementById('modal-content');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+            const generateReportBtn = document.getElementById('generate-report-btn');
+            const locationInput = document.getElementById('location-input');
+            const generateCampaignBtn = document.getElementById('generate-campaign-btn');
+
+            const chatWindow = document.getElementById('chat-window');
+            const chatInput = document.getElementById('chat-input');
+            const chatSendBtn = document.getElementById('chat-send-btn');
+
+            const spinner = `<div class="flex justify-center items-center h-48"><div class="spinner w-12 h-12 rounded-full border-4"></div></div>`;
+
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            async function callGemini(prompt) {
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: prompt }] }]
+                };
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) {
+                        throw new Error(`API call failed with status: ${response.status}`);
+                    }
+                    const result = await response.json();
+                    return result.candidates[0].content.parts[0].text;
+                } catch (error) {
+                    console.error("Gemini API call error:", error);
+                    return "Sorry, I couldn't generate a response at this time. Please try again later.";
+                }
+            }
+
+            function openModal(title, content) {
+                modalTitle.innerText = title;
+                modalContent.innerHTML = content;
+                modal.classList.remove('hidden');
+                setTimeout(() => modal.classList.remove('opacity-0'), 10);
+            }
+
+            function closeModal() {
+                modal.classList.add('opacity-0');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            }
+
+            modalCloseBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeModal();
+                }
+            });
+
+            generateReportBtn.addEventListener('click', async () => {
+                const location = locationInput.value.trim();
+                if (!location) {
+                    alert("Please enter a location.");
+                    return;
+                }
+                openModal(`Health Report for ${location}`, spinner);
+                const prompt = `Generate a brief summary of the key public healthcare challenges in ${location}, India. Focus on issues like infrastructure, workforce shortages, and prevalent diseases. Format it as a short report with a title and bullet points. Use markdown for formatting.`;
+                const response = await callGemini(prompt);
+                modalContent.innerHTML = `<div class="prose max-w-none">${response.replace(/\n/g, '<br>')}</div>`;
+            });
+            
+            generateCampaignBtn.addEventListener('click', async () => {
+                openModal('Draft Awareness Campaign', spinner);
+                const prompt = `Draft a simple one-week health awareness campaign plan for the 'Swasth Parivar Program' focusing on Diabetes prevention in a rural Indian community. Include a theme, key messages for each day, and two suggested activities. Use markdown for formatting.`;
+                const response = await callGemini(prompt);
+                modalContent.innerHTML = `<div class="prose max-w-none">${response.replace(/\n/g, '<br>')}</div>`;
+            });
+
+            async function handleChat() {
+                const userMessage = chatInput.value.trim();
+                if (!userMessage) return;
+
+                appendMessage(userMessage, 'user');
+                chatInput.value = '';
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+                
+                appendMessage('...', 'assistant', true);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+
+                const prompt = `You are a helpful AI health assistant. You are not a doctor. Provide general health information only and and always include a disclaimer that the user should consult a medical professional for advice. User question: "${userMessage}"`;
+                const response = await callGemini(prompt);
+                
+                const thinkingBubble = document.getElementById('thinking-bubble');
+                if(thinkingBubble) thinkingBubble.remove();
+                
+                appendMessage(response, 'assistant');
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+
+            function appendMessage(text, sender, isThinking = false) {
+                const bubble = document.createElement('div');
+                bubble.classList.add('chat-bubble', sender);
+                bubble.textContent = text;
+                if (isThinking) {
+                    bubble.id = 'thinking-bubble';
+                }
+                chatWindow.appendChild(bubble);
+            }
+            
+            chatSendBtn.addEventListener('click', handleChat);
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleChat();
+                }
+            });
+
+        });
+    </script>
+
+</body>
+</html>
